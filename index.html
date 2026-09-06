@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>AdaDeals — Mall Deals Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+<script defer src="https://cloud.umami.is/script.js" data-website-id="292a04af-3bf7-498e-870e-6b2f5a14ed57"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #11100E;
+    --surface: rgba(255,255,255,.10);
+    --surface-strong: rgba(255,255,255,.18);
+    --surface-soft: rgba(255,255,255,.08);
+    --border: rgba(255,255,255,.18);
+    --text: #FFFFFF;
+    --muted: rgba(255,255,255,.74);
+    --soft: rgba(255,255,255,.52);
+    --accent: #F97316;
+    --accent2: #FBBF24;
+    --dark: #15120F;
+    --danger: #FF5A4F;
+    --success: #7BE495;
+    --radius: 24px;
+    --bottom-nav: 72px;
+  }
+
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select, textarea { font-family: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+
+  .app-shell { height: 100dvh; position: relative; overflow: hidden; background: #0E0D0B; }
+
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    padding: calc(12px + env(safe-area-inset-top)) 14px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    pointer-events: none;
+  }
+  .brand-lockup, .top-actions { pointer-events: auto; }
+  .brand-lockup {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(12,12,12,.34); border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(14px); border-radius: 999px; padding: 8px 12px 8px 13px;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 23px; letter-spacing: -.4px; line-height: 1; }
+  .logo span { color: var(--accent2); }
+  .city-chip { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,.2); padding-left: 10px; }
+  .top-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14);
+    background: rgba(12,12,12,.36); color: white; backdrop-filter: blur(14px);
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(.96); }
+
+  .feed {
+    height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  .feed::-webkit-scrollbar { width: 0; height: 0; }
+
+  .deal-screen {
+    height: 100dvh; width: 100%; position: relative; scroll-snap-align: start; scroll-snap-stop: always;
+    display: flex; align-items: stretch; justify-content: center; overflow: hidden;
+    background: linear-gradient(145deg, #1B1815, #080807);
+  }
+  .deal-screen::before {
+    content: ''; position: absolute; inset: 0; opacity: .92;
+    background:
+      radial-gradient(circle at 15% 18%, rgba(251,191,36,.34), transparent 30%),
+      radial-gradient(circle at 82% 22%, rgba(249,115,22,.28), transparent 28%),
+      radial-gradient(circle at 45% 82%, rgba(255,255,255,.12), transparent 28%),
+      linear-gradient(165deg, var(--card-a), var(--card-b) 55%, #0D0C0A 115%);
+  }
+  .deal-screen::after {
+    content: ''; position: absolute; inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,.42), transparent 22%, transparent 50%, rgba(0,0,0,.74) 100%),
+      linear-gradient(to right, rgba(0,0,0,.05), transparent 45%, rgba(0,0,0,.32));
+  }
+
+  .noise {
+    position: absolute; inset: 0; opacity: .13; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .content {
+    position: relative; z-index: 2; width: min(100%, 520px); height: 100%; padding: 92px 18px calc(var(--bottom-nav) + 30px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+
+  .deal-meta-top { position: absolute; top: calc(78px + env(safe-area-inset-top)); left: 18px; right: 18px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .mall-pill, .urgency-pill, .featured-pill, .category-pill, .tiny-pill {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 7px 11px;
+    border: 1px solid rgba(255,255,255,.16); background: rgba(0,0,0,.22); backdrop-filter: blur(12px);
+    font-size: 12px; color: var(--muted); font-weight: 600;
+  }
+  .urgency-pill { color: white; background: rgba(255,90,79,.18); border-color: rgba(255,90,79,.35); }
+  .urgency-pill.good { background: rgba(123,228,149,.15); border-color: rgba(123,228,149,.28); }
+  .featured-pill { color: #FFE8B1; background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.35); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+
+  .deal-body { padding-right: 72px; }
+  .featured-row { margin-bottom: 12px; }
+  .brand { font-size: clamp(32px, 9vw, 58px); line-height: .92; font-weight: 700; letter-spacing: -2px; max-width: 390px; text-wrap: balance; }
+  .headline { margin-top: 14px; font-family: 'DM Serif Display', serif; font-size: clamp(34px, 10vw, 64px); line-height: .9; letter-spacing: -.8px; max-width: 390px; text-wrap: balance; }
+  .desc { margin-top: 15px; color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 360px; }
+  .deal-tags { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .category-pill { color: white; background: rgba(255,255,255,.12); }
+  .tiny-pill { color: rgba(255,255,255,.75); padding: 6px 10px; font-weight: 500; }
+
+  .side-actions {
+    position: absolute; z-index: 5; right: 14px; bottom: calc(var(--bottom-nav) + 92px);
+    display: flex; flex-direction: column; gap: 18px; align-items: center;
+  }
+  .action { display: flex; flex-direction: column; align-items: center; gap: 5px; color: white; font-size: 11px; font-weight: 600; }
+  .round-action {
+    width: 52px; height: 52px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.28); backdrop-filter: blur(12px); color: white; display: grid; place-items: center; cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0,0,0,.16);
+  }
+  .round-action:active { transform: scale(.94); }
+  .round-action.saved { background: rgba(251,191,36,.22); color: #FFE5A3; border-color: rgba(251,191,36,.42); }
+  .action-count { color: rgba(255,255,255,.84); text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+
+  .bottom-nav {
+    position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); height: 58px;
+    background: rgba(18,17,15,.76); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(18px);
+    border-radius: 999px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 5px;
+    max-width: 520px; margin: 0 auto;
+  }
+  .nav-item {
+    border: 0; background: transparent; color: rgba(255,255,255,.58); border-radius: 999px; display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; cursor: pointer;
+  }
+  .nav-item.active { background: rgba(255,255,255,.12); color: white; }
+
+  .sheet-backdrop { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.38); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+  .bottom-sheet {
+    position: fixed; z-index: 90; left: 0; right: 0; bottom: 0; transform: translateY(105%); transition: transform .26s cubic-bezier(.22,1,.36,1);
+    background: #F7F4EE; color: #171411; border-radius: 28px 28px 0 0; padding: 10px 18px calc(24px + env(safe-area-inset-bottom)); max-height: 86dvh; overflow-y: auto;
+  }
+  .bottom-sheet.show { transform: translateY(0); }
+  .handle { width: 44px; height: 5px; background: #D9D2C8; border-radius: 999px; margin: 0 auto 16px; }
+  .sheet-title { font-size: 22px; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+  .sheet-sub { color: #746D66; font-size: 13px; margin-bottom: 18px; }
+  .sheet-section { margin: 18px 0; }
+  .sheet-label { color: #8A837B; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 9px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-chip {
+    border: 1px solid #E2DDD5; background: white; color: #3C3834; border-radius: 999px; padding: 9px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .filter-chip.active { background: #171411; color: white; border-color: #171411; }
+  .sheet-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .primary, .secondary {
+    flex: 1; border: none; border-radius: 16px; padding: 13px 16px; font-weight: 700; cursor: pointer;
+  }
+  .primary { background: #F97316; color: white; }
+  .secondary { background: #EDE8E1; color: #181511; }
+
+  .search-panel, .saved-panel, .all-panel, .add-panel {
+    position: fixed; z-index: 78; inset: 0; background: #F7F4EE; color: #171411; transform: translateX(105%); transition: transform .24s ease;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(86px + env(safe-area-inset-bottom)); overflow-y: auto;
+  }
+  .search-panel.show, .saved-panel.show, .all-panel.show, .add-panel.show { transform: translateX(0); }
+  .panel-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .panel-title { font-size: 24px; font-weight: 800; letter-spacing: -.6px; }
+  .close-panel { border: none; background: #ECE6DE; width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; cursor: pointer; }
+  .search-box { width: 100%; border: 1px solid #DDD6CC; background: white; border-radius: 18px; padding: 14px 16px; font-size: 16px; outline: none; margin-bottom: 18px; }
+  .result-list { display: grid; gap: 10px; }
+  .result-card {
+    border: 1px solid #E4DED6; background: white; border-radius: 18px; padding: 14px; display: grid; gap: 7px; cursor: pointer;
+  }
+  .result-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .result-brand { font-weight: 800; font-size: 16px; }
+  .result-mall { color: #7A7169; font-size: 12px; }
+  .result-desc { color: #4B443E; font-size: 13px; line-height: 1.45; }
+  .result-urg { color: #C2410C; font-size: 12px; font-weight: 800; white-space: nowrap; }
+
+  .form-grid { display: grid; gap: 11px; }
+  .form-grid input, .form-grid select, .form-grid textarea {
+    width: 100%; border: 1px solid #DDD6CC; background: white; border-radius: 16px; padding: 13px 14px; font-size: 14px; outline: none;
+  }
+  .form-grid textarea { min-height: 88px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .check-row { display: flex; align-items: center; gap: 9px; color: #5D554E; font-size: 14px; padding: 4px; }
+
+  .empty-state { text-align: center; padding: 58px 18px; color: #766F68; }
+  .empty-state strong { display: block; color: #171411; font-size: 18px; margin-bottom: 6px; }
+
+
+  .all-toolbar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 12px; }
+  .all-toolbar::-webkit-scrollbar { height: 0; }
+  .mini-chip { border: 1px solid #E2DDD5; background: white; color: #3C3834; border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .mini-chip.active { background: #171411; color: white; border-color: #171411; }
+  .all-chip { border: 1px solid #E2DDD5; background: white; color: #3C3834; border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; transition: all .15s; }
+  .all-chip.active { background: #F97316; color: white; border-color: #F97316; }
+  .all-count { color: #746D66; font-size: 13px; margin: -6px 0 14px; }
+  .expired-title { margin: 22px 0 10px; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #9A9288; }
+  .expired-note { color:#8A837B; font-size:12px; margin:-4px 0 12px; line-height:1.45; }
+  .all-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .all-card { position: relative; border: 1px solid #E4DED6; background: white; border-radius: 22px; padding: 16px; min-height: 168px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-shadow: 0 6px 20px rgba(23,20,17,.05); }
+  .all-card.expired { opacity:.62; filter:saturate(.65); }
+  .all-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--card-accent, #F97316); }
+  .all-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .all-brand { font-size: 20px; line-height: 1.05; font-weight: 800; letter-spacing: -.4px; }
+  .all-mall { margin-top: 4px; color: #8A837B; font-size: 13px; }
+  .all-urg { background: #FDECEA; color: #C0392B; border-radius: 999px; padding: 7px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  .all-urg.good { background: #E8F5E8; color: #2D6A2D; }
+  .all-urg.expired { background:#ECE6DE; color:#766F68; }
+  .all-desc { color: #5F5750; font-size: 15px; line-height: 1.45; margin-bottom: 14px; }
+  .all-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .all-cat { border-radius: 999px; padding: 7px 11px; font-size: 12px; font-weight: 800; background: #F4EFE8; color: #3C3834; }
+  .all-actions { display: flex; gap: 7px; }
+  .all-btn { border: 1px solid #E0D8CF; background: white; color: #625A52; border-radius: 12px; padding: 8px 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .all-btn.saved { color: #B45309; background: #FFF4DD; border-color: #F6D49B; }
+
+  .fav-spotlight {
+    margin: 14px 0 16px;
+    border: 1px solid #F2D19B;
+    background: linear-gradient(135deg, #FFF7E8, #FFFFFF);
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: 0 10px 28px rgba(180, 83, 9, .10);
+  }
+  .fav-kicker { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:#B45309; background:#FFF0D2; border-radius:999px; padding:7px 10px; margin-bottom:10px; }
+  .fav-title { font-size:22px; line-height:1.05; font-weight:900; letter-spacing:-.5px; color:#171411; }
+  .fav-meta { margin-top:5px; color:#7A7169; font-size:13px; }
+  .fav-desc { margin-top:10px; color:#4B443E; font-size:14px; line-height:1.45; }
+  .fav-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:13px; }
+  .fav-count { color:#B45309; font-size:13px; font-weight:900; }
+  .fav-open { border:0; background:#171411; color:white; border-radius:999px; padding:9px 13px; font-size:12px; font-weight:800; cursor:pointer; }
+  .favourite-ribbon { display:inline-flex; align-items:center; gap:6px; background:rgba(251,191,36,.26); border:1px solid rgba(251,191,36,.42); color:#FFE8B1; border-radius:999px; padding:7px 11px; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+
+  @media (min-width: 760px) { .all-grid { grid-template-columns: 1fr; } }
+
+
+  /* INLINE FILTER STRIP */
+  .filter-strip {
+    position: fixed; top: calc(56px + env(safe-area-inset-top)); left: 0; right: 0; z-index: 35;
+    padding: 6px 14px 8px;
+    display: flex; flex-direction: column; gap: 5px;
+    background: linear-gradient(to bottom, rgba(11,10,9,.95) 70%, transparent);
+    pointer-events: none;
+  }
+  .filter-strip-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; pointer-events: auto; padding-bottom: 2px; }
+  .filter-strip-row::-webkit-scrollbar { height: 0; }
+  .fs-chip {
+    flex-shrink: 0; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.1);
+    color: rgba(255,255,255,.8); border-radius: 999px; padding: 6px 14px;
+    font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    font-family: 'DM Sans', sans-serif; transition: all .15s;
+  }
+  .fs-chip:active { transform: scale(.96); }
+  .fs-chip.active { background: #F97316; border-color: #F97316; color: white; }
+
+  /* CURATOR */
+  .curator-overlay {
+    position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
+    display: none; place-items: center;
+  }
+  .curator-overlay.show { display: grid; }
+  .curator-box {
+    background: #F7F4EE; color: #171411; border-radius: 28px; padding: 28px 24px;
+    width: min(340px, 90vw); display: flex; flex-direction: column; gap: 14px;
+  }
+  .curator-box h3 { font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
+  .curator-box p { font-size: 13px; color: #746D66; line-height: 1.5; }
+  .curator-box input { width: 100%; border: 1.5px solid #DDD6CC; background: white; border-radius: 14px; padding: 12px 14px; font-size: 15px; outline: none; font-family: 'DM Sans', sans-serif; }
+  .curator-box input:focus { border-color: #F97316; }
+  .curator-btns { display: flex; gap: 10px; }
+  .curator-btns button { flex: 1; border: none; border-radius: 14px; padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .c-primary { background: #F97316; color: white; }
+  .c-secondary { background: #ECE8E1; color: #171411; }
+
+  /* STORE LOCATION */
+  .store-loc-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22);
+    border-radius: 999px; padding: 6px 11px; margin-bottom: 10px;
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+  }
+  .all-store-loc { font-size: 12px; color: #C2410C; font-weight: 700; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+  .result-store-loc { font-size: 11px; color: #C2410C; font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+
+  .pulse-card {
+    position: relative; z-index: 2; width:min(100%,520px); min-height:100%; padding: calc(95px + env(safe-area-inset-top)) 18px calc(var(--bottom-nav) + 28px);
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  .ada-mark {
+    width: 76px; height: 76px; border-radius: 24px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #F97316, #FBBF24);
+    color: #171411; font-weight: 900; font-size: 32px; letter-spacing: -1.6px;
+    box-shadow: 0 24px 60px rgba(249,115,22,.30);
+    margin-bottom: 18px;
+  }
+  .pulse-kicker { display:inline-flex; width:max-content; align-items:center; gap:7px; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.16); font-size:12px; font-weight:800; color:#FFE8B1; text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px; }
+  .pulse-title { font-size: clamp(42px, 11vw, 72px); line-height:.88; font-weight:900; letter-spacing:-2.4px; max-width:420px; }
+  .pulse-title .highlight-word { color:#FBBF24; font-family:'DM Serif Display', serif; font-weight:400; font-style:italic; letter-spacing:-1px; }
+  .pulse-sub { margin-top:14px; color:var(--muted); font-size:16px; line-height:1.45; max-width:380px; }
+  .ada-line { margin-top: 13px; display:flex; flex-wrap:wrap; gap:8px; }
+  .ada-line span {
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.10);
+    border-radius:999px; padding:7px 10px; color:rgba(255,255,255,.78);
+    font-size:12px; font-weight:800;
+  }
+
+  .pulse-card {
+    position: relative; z-index: 2; width: min(100%, 520px); height: 100%; padding: 98px 18px calc(var(--bottom-nav) + 28px);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .pulse-kicker { display:inline-flex; width:max-content; align-items:center; gap:7px; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.16); font-size:12px; font-weight:800; color:#FFE8B1; text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px; }
+  .pulse-title { font-size: clamp(38px, 10vw, 66px); line-height:.92; font-weight:800; letter-spacing:-2px; max-width:390px; }
+  .pulse-sub { margin-top:14px; color:var(--muted); font-size:16px; line-height:1.45; max-width:360px; }
+  .pulse-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:20px; }
+  .pulse-stat { background:rgba(0,0,0,.24); border:1px solid rgba(255,255,255,.14); border-radius:18px; padding:12px 10px; backdrop-filter:blur(12px); }
+  .pulse-num { font-size:24px; font-weight:800; line-height:1; }
+  .pulse-label { margin-top:5px; font-size:11px; color:rgba(255,255,255,.68); font-weight:700; }
+  .quick-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+  .quick-chip { border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.12); color:white; border-radius:999px; padding:9px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+  .quick-chip.active { background:#F97316; border-color:#F97316; }
+  .near-banner { margin-bottom:14px; width:max-content; max-width:100%; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.18); border-radius:18px; padding:10px 12px; backdrop-filter:blur(12px); }
+  .near-banner strong { display:block; font-size:14px; }
+  .near-banner span { display:block; margin-top:2px; color:rgba(255,255,255,.72); font-size:12px; }
+  .social-proof { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+  .proof-pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:7px 10px; background:rgba(255,255,255,.11); border:1px solid rgba(255,255,255,.14); color:rgba(255,255,255,.82); font-size:12px; font-weight:700; }
+  .deal-hint { margin-top:10px; color:rgba(255,255,255,.55); font-size:12px; }
+
+  #toast {
+    position: fixed; z-index: 999; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(28px);
+    background: rgba(255,255,255,.92); color: #171411; border-radius: 999px; padding: 10px 16px; opacity: 0; transition: .22s; font-weight: 700; font-size: 13px;
+    box-shadow: 0 16px 34px rgba(0,0,0,.24); white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (min-width: 760px) {
+    .app-shell { display: flex; justify-content: center; background: radial-gradient(circle at top, #30231A, #0E0D0B 58%); }
+    .phone-frame { width: 430px; height: 100dvh; position: relative; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+    .topbar, .bottom-nav { left: 50%; right: auto; width: 430px; transform: translateX(-50%); }
+    .bottom-nav { max-width: 406px; width: calc(430px - 24px); }
+    .sheet-backdrop, .bottom-sheet, .search-panel, .saved-panel, .all-panel, .add-panel { left: 50%; right: auto; width: 430px; transform: translateX(-50%) translateY(105%); }
+    .bottom-sheet.show { transform: translateX(-50%) translateY(0); }
+    .search-panel, .saved-panel, .all-panel, .add-panel { left: 50%; right: auto; width: 430px; top: 0; bottom: 0; inset: unset; transform: translateX(200%); }
+    .search-panel.show, .saved-panel.show, .all-panel.show, .add-panel.show { transform: translateX(-50%); }
+  }
+
+  @media (max-width: 380px) {
+    .brand { font-size: 34px; }
+    .headline { font-size: 37px; }
+    .deal-body { padding-right: 64px; }
+    .round-action { width: 48px; height: 48px; }
+  }
+
+  /* SECRET PROMO */
+  .secret-card { position:relative; overflow:hidden; }
+  .secret-locked { background:linear-gradient(135deg,#1A1815,#2E2520); color:white; border-radius:var(--r-card,28px); padding:28px 24px; margin-bottom:0; }
+  .secret-locked .lock-icon { font-size:32px; margin-bottom:10px; display:block; }
+  .secret-locked .secret-brand { font-size:22px; font-weight:800; letter-spacing:-.4px; margin-bottom:4px; filter:blur(6px); user-select:none; }
+  .secret-locked .secret-teaser { font-size:14px; opacity:.6; margin-bottom:16px; }
+  .progress-wrap { background:rgba(255,255,255,.12); border-radius:999px; height:8px; margin-bottom:8px; overflow:hidden; }
+  .progress-bar { height:100%; border-radius:999px; background:linear-gradient(90deg,#F97316,#FBBF24); transition:width .5s ease; }
+  .progress-label { font-size:12px; opacity:.65; margin-bottom:16px; }
+  .secret-unlocked { background:linear-gradient(135deg,#14532D,#166534); color:white; border-radius:var(--r-card,28px); padding:28px 24px; }
+  .secret-unlocked .unlock-badge { display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px; }
+  .secret-unlocked .secret-brand-full { font-size:24px; font-weight:800; margin-bottom:4px; }
+  .secret-unlocked .secret-msg { font-size:15px; line-height:1.5; margin-bottom:16px; opacity:.95; }
+  .claim-btn { width:100%;padding:14px;border-radius:14px;border:none;background:white;color:#14532D;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-.2px; }
+  .claims-left { font-size:12px; opacity:.65; text-align:center; margin-top:8px; }
+
+  /* CLAIM MODAL */
+  .claim-modal { position:fixed;inset:0;z-index:500;background:#14532D;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center; }
+  .claim-modal.show { display:flex; }
+  .claim-modal .cm-icon { font-size:64px; margin-bottom:16px; }
+  .claim-modal .cm-brand { font-size:15px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase; }
+  .claim-modal .cm-msg { font-family:'DM Serif Display',serif;font-size:28px;font-style:italic;color:white;line-height:1.25;margin-bottom:20px; }
+  .claim-modal .cm-tc { font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:28px;max-width:320px; }
+  .claim-modal .cm-claims { font-size:13px;font-weight:700;color:rgba(255,255,255,.75);background:rgba(255,255,255,.12);border-radius:999px;padding:6px 16px;margin-bottom:28px; }
+  .claim-modal .cm-close { position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);border:none;color:white;width:36px;height:36px;border-radius:999px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+  .cm-show-btn { width:100%;max-width:320px;padding:16px;border-radius:16px;border:none;background:white;color:#14532D;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;margin-bottom:12px; }
+  .cm-done-btn { background:none;border:2px solid rgba(255,255,255,.3);color:white;width:100%;max-width:320px;padding:14px;border-radius:16px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer; }
+
+  /* SHARE SHEET */
+  .share-overlay { position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center; }
+  .share-overlay.show { display:flex; }
+  .share-sheet { background:#1C1A17;border-radius:28px 28px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));width:100%;max-width:520px; }
+  .share-handle { width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:999px;margin:0 auto 18px; }
+  .share-title { font-size:13px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px; }
+  .share-deal-preview { background:rgba(255,255,255,.07);border-radius:14px;padding:12px 14px;margin-bottom:18px; }
+  .share-deal-preview .sdp-brand { font-size:15px;font-weight:700;color:white;margin-bottom:2px; }
+  .share-deal-preview .sdp-sub { font-size:12px;color:rgba(255,255,255,.5); }
+  .share-buttons { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px; }
+  .share-btn { display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:none;border-radius:16px;padding:14px 8px;cursor:pointer;transition:background .15s; }
+  .share-btn:active { background:rgba(255,255,255,.16); }
+  .share-btn .sb-icon { font-size:24px;line-height:1; }
+  .share-btn .sb-label { font-size:11px;font-weight:600;color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif; }
+  .share-btn.wa { background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3); }
+  .share-btn.fb { background:rgba(24,119,242,.15);border:1px solid rgba(24,119,242,.3); }
+  .share-btn.ig { background:rgba(225,48,108,.15);border:1px solid rgba(225,48,108,.3); }
+  .share-btn.copy { background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15); }
+  .share-dismiss { width:100%;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:13px;border-radius:14px;cursor:pointer; }
+
+  /* MANAGE PANEL */
+  .manage-panel { position:fixed;z-index:78;inset:0;background:#F7F4EE;color:#171411;transform:translateX(200%);transition:transform .24s ease;overflow-y:auto;padding:calc(18px + env(safe-area-inset-top)) 0 calc(86px + env(safe-area-inset-bottom)); }
+  .manage-panel.show { transform:translateX(0); }
+  @media (min-width: 760px) {
+    .manage-panel { left:50%; right:auto; width:430px; top:0; bottom:0; inset:unset; transform:translateX(200%); }
+    .manage-panel.show { transform:translateX(-50%); }
+  }
+  .manage-panel .panel-top { padding:0 16px 14px; border-bottom:1px solid #E8E4DC; margin-bottom:0; }
+  .manage-section { padding:20px 16px 0; }
+  .manage-section-title { font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#A09A93;margin-bottom:12px;display:flex;align-items:center;gap:8px; }
+  .manage-section-title span { background:#F0EDE6;border-radius:999px;padding:2px 8px;font-size:11px; }
+  .manage-card { background:white;border:1px solid #E8E4DC;border-radius:16px;padding:14px 16px;margin-bottom:10px; }
+  .manage-card-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px; }
+  .manage-brand { font-size:15px;font-weight:700;color:#171411; }
+  .manage-meta { font-size:12px;color:#A09A93;margin-bottom:4px; }
+  .manage-dates { font-size:12px;font-weight:600;color:#6B6560;margin-bottom:10px; }
+  .manage-dates .scheduled-badge { background:#FEF3DC;color:#9C6400;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:6px; }
+  .manage-dates .live-badge { background:#E8F5E8;color:#2D6A2D;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:6px; }
+  .manage-actions { display:flex;gap:8px; }
+  .manage-btn { flex:1;padding:8px;border-radius:10px;border:1px solid #E8E4DC;background:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer; }
+  .manage-btn.edit { color:#D4500A !important;border-color:#F5C4A8;background:#FBE9DF;font-weight:700; }
+  .manage-btn.del { color:#C0392B !important;border-color:#FDECEA;background:#FDECEA;font-weight:700; }
+  .manage-empty { text-align:center;padding:28px 16px;color:#A09A93;font-size:14px; }
+
+  /* EDIT MODE indicator on add panel */
+  .editing-badge { display:none;background:#FEF3DC;color:#9C6400;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:8px; }
+  .editing-badge.show { display:inline-block; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="phone-frame">
+    <div class="topbar">
+      <div class="brand-lockup">
+        <div class="logo" onclick="handleLogoBrand()" style="cursor:default;user-select:none;">Ada<span>Deals</span></div>
+        <div class="city-chip" id="cityChip">📍 Kuching</div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" onclick="openPanel('search')" aria-label="Search">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-strip" id="filterStrip"></div>
+
+    <main class="feed" id="feed"></main>
+
+    <nav class="bottom-nav" style="grid-template-columns: repeat(5, 1fr);">
+      <button class="nav-item active" id="nav-feed" onclick="showFeed()">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18"/><path d="M3 12h18"/><path d="M3 19h18"/></svg>
+        Feed
+      </button>
+      <button class="nav-item" onclick="openPanel('all')" id="nav-all">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        All
+      </button>
+      <button class="nav-item" onclick="openPanel('search')" id="nav-search">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+        Search
+      </button>
+      <button class="nav-item" onclick="openPanel('saved')" id="nav-saved">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Saved
+      </button>
+      <button class="nav-item" onclick="openManage()" id="nav-manage">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Manage
+      </button>
+    </nav>
+  </div>
+</div>
+
+<div class="curator-overlay" id="curatorOverlay">
+  <div class="curator-box">
+    <h3>🔐 Curator access</h3>
+    <p>This panel is for AdaDeals curators only. Enter your password to add or manage deals.</p>
+    <input type="password" id="curatorPw" placeholder="Password" onkeydown="if(event.key==='Enter')checkCuratorPw()" />
+    <div class="curator-btns">
+      <button class="c-secondary" onclick="closeCurator()">Cancel</button>
+      <button class="c-primary" onclick="checkCuratorPw()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<section class="search-panel" id="searchPanel">
+  <div class="panel-top"><h2 class="panel-title">Search deals</h2><button class="close-panel" onclick="closePanels()">✕</button></div>
+  <input class="search-box" id="searchInput" placeholder="Search brands, malls, food…" oninput="renderSearch()" />
+  <div id="searchResults" class="result-list"></div>
+</section>
+
+<section class="all-panel" id="allPanel">
+  <div class="panel-top"><h2 class="panel-title">All deals</h2><button class="close-panel" onclick="closePanels()">✕</button></div>
+  <div id="allFilters"></div>
+  <div id="allResults"></div>
+</section>
+
+<section class="saved-panel" id="savedPanel">
+  <div class="panel-top"><h2 class="panel-title">Saved deals</h2><button class="close-panel" onclick="closePanels()">✕</button></div>
+  <div id="savedResults" class="result-list"></div>
+</section>
+
+
+<section class="manage-panel" id="managePanel">
+  <div class="panel-top" style="display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <h2 class="panel-title" style="margin:0;">Manage deals</h2>
+      <span style="background:#F97316;color:white;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;">Curator</span>
+    </div>
+    <button class="close-panel" onclick="closePanels()">✕</button>
+  </div>
+  <div id="manageContent"></div>
+</section>
+
+<section class="add-panel" id="addPanel">
+  <div class="panel-top" style="display:flex;align-items:center;justify-content:space-between;"><div style="display:flex;align-items:center;gap:8px;"><h2 class="panel-title" id="addPanelTitle">Add promotion</h2><span class="editing-badge" id="editingBadge">Editing</span></div><button class="close-panel" onclick="closePanels()">✕</button></div>
+  <div class="form-grid">
+    <input id="fBrand" placeholder="Brand name" />
+    <div class="form-row">
+      <select id="fCity" onchange="updateFormMalls()"></select>
+      <select id="fMall"></select>
+    </div>
+    <select id="fCat"></select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#888;display:block;margin-bottom:5px;">Start date</label>
+        <input id="fStartDate" type="date" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;"/>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#888;display:block;margin-bottom:5px;">End date</label>
+        <input id="fDate" type="date" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;"/>
+      </div>
+    </div>
+    <input id="fHeadline" placeholder="Short headline e.g. Buy 1 Free 1" />
+    <textarea id="fDesc" placeholder="Promotion details"></textarea>
+    <input id="fStoreLoc" type="text" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;" placeholder="Store location e.g. Level 2, beside Padini (optional)"/>
+    <label class="check-row" style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;padding:4px 0;"><input type="checkbox" id="fFeatured" style="width:18px;height:18px;flex-shrink:0;"/> Mark as featured deal</label>
+    <label class="check-row" style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;padding:4px 0;"><input type="checkbox" id="fIsSecret" style="width:18px;height:18px;flex-shrink:0;" onchange="toggleSecretFields()"/> 🔒 Secret promo (unlocks at save target)</label>
+    <div id="secretFields" style="display:none;background:#FEF3DC;border-radius:14px;padding:14px;display:none;flex-direction:column;gap:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#888;display:block;margin-bottom:5px;">Saves to unlock</label>
+          <input id="fThreshold" type="number" value="50" min="1" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;"/>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:#888;display:block;margin-bottom:5px;">Max claims</label>
+          <input id="fMaxClaims" type="number" value="30" min="1" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;"/>
+        </div>
+      </div>
+      <input id="fUnlockMsg" placeholder="Unlock message e.g. 🍦 Free scoop of ice cream — show this screen!" style="padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;"/>
+      <textarea id="fTc" placeholder="T&C e.g. Valid for first 30 customers only. One per person. Show this screen to staff at the counter." style="padding:10px 12px;border-radius:10px;border:1px solid #ddd;font-family:inherit;font-size:14px;min-height:70px;resize:vertical;"></textarea>
+    </div>
+    <button class="primary" id="submitBtn" onclick="submitDeal()">Add to feed</button>
+  </div>
+</section>
+
+
+
+<div class="share-overlay" id="shareOverlay" onclick="if(event.target===this)closeShareSheet()">
+  <div class="share-sheet">
+    <div class="share-handle"></div>
+    <div class="share-title">Share this deal</div>
+    <div class="share-deal-preview">
+      <div class="sdp-brand" id="sdpBrand"></div>
+      <div class="sdp-sub" id="sdpSub"></div>
+    </div>
+    <div class="share-buttons">
+      <button class="share-btn wa" onclick="shareVia('whatsapp')">
+        <span class="sb-icon">💬</span>
+        <span class="sb-label">WhatsApp</span>
+      </button>
+      <button class="share-btn fb" onclick="shareVia('facebook')">
+        <span class="sb-icon">📘</span>
+        <span class="sb-label">Facebook</span>
+      </button>
+      <button class="share-btn ig" onclick="shareVia('instagram')">
+        <span class="sb-icon">📸</span>
+        <span class="sb-label">Instagram</span>
+      </button>
+      <button class="share-btn copy" onclick="shareVia('copy')">
+        <span class="sb-icon">📋</span>
+        <span class="sb-label">Copy</span>
+      </button>
+    </div>
+    <button class="share-dismiss" onclick="closeShareSheet()">Cancel</button>
+  </div>
+</div>
+
+<div class="claim-modal" id="claimModal">
+  <button class="cm-close" onclick="closeClaimModal()">✕</button>
+  <div class="cm-icon" id="cmIcon">🎉</div>
+  <div class="cm-brand" id="cmBrand"></div>
+  <div class="cm-msg" id="cmMsg"></div>
+  <div class="cm-claims" id="cmClaims"></div>
+  <div class="cm-tc" id="cmTc"></div>
+  <button class="cm-show-btn" onclick="confirmShow()">📱 Show this to staff</button>
+  <button class="cm-done-btn" onclick="closeClaimModal()">Done</button>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+const CITIES = ["Kuching"];
+const MALLS_BY_CITY = {
+  "Kuching":["The Spring"],
+};
+const CATEGORIES = ["All","Fashion","F&B","Electronics","Health & Beauty","Entertainment","Lifestyle"];
+
+const palette = {
+  "Fashion": ["#B45309", "#7C2D12"],
+  "F&B": ["#0F766E", "#134E4A"],
+  "Electronics": ["#1D4ED8", "#172554"],
+  "Health & Beauty": ["#BE185D", "#831843"],
+  "Entertainment": ["#7C3AED", "#3B0764"],
+  "Lifestyle": ["#C2410C", "#431407"],
+};
+
+const SEED = [
+  {id:"s1",brand:"Uniqlo",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"Level 2, beside Padini",headline:"UP TO 50% OFF",description:"LifeWear Sale on selected items. In-store only, while stocks last.",startDate:"2026-05-01",endDate:"2026-05-31",featured:true,saves:0,shares:0},
+  {id:"s5",brand:"Padini",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"Level 2, East Wing",headline:"BUY 2 GET 1 FREE",description:"Buy 2 get 1 free on all regular-priced items.",startDate:"2026-05-01",endDate:"2026-05-31",featured:false,saves:0,shares:0},
+  {id:"s6",brand:"MBO Cinemas",city:"Kuching",mall:"The Spring",category:"Entertainment",storeLocation:"Level 3, above Padini",headline:"RM10 TUESDAYS",description:"RM10 tickets every Tuesday this month.",startDate:"2026-05-01",endDate:"2026-05-31",featured:false,saves:0,shares:0},
+  {id:"s8",brand:"Popular Bookstore",city:"Kuching",mall:"The Spring",category:"Lifestyle",storeLocation:"Level 1, South Wing",headline:"TRIPLE POINTS",description:"Members earn triple points on all purchases this month.",startDate:"2026-05-01",endDate:"2026-05-31",featured:false,saves:0,shares:0},
+];
+
+// All curated deals — always shown alongside any Supabase data
+const LOCAL_DEALS = [
+  // ── Previous 11 Spring Mall deals ──────────────────────────────────────
+  {id:"l01",brand:"Columbia",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"UP TO 50% OFF",description:"Up to 50% off selected items.",startDate:"2026-05-25",endDate:"2026-06-14",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l02",brand:"Aeon Wellness",city:"Kuching",mall:"The Spring",category:"Health & Beauty",storeLocation:"The Spring",headline:"COSMETIC CLEARANCE",description:"Cosmetic clearance sale — up to 50% off!",startDate:"2026-05-25",endDate:"2026-07-19",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l03",brand:"Akemi",city:"Kuching",mall:"The Spring",category:"Lifestyle",storeLocation:"The Spring",headline:"SPEND & GET CASHBACK",description:"Spend RM350, get RM50 back. Spend RM700, get RM120 back!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l04",brand:"Thermos",city:"Kuching",mall:"The Spring",category:"Lifestyle",storeLocation:"The Spring",headline:"30% OFF FOR MEMBERS",description:"Sign up for FREE membership and get 30% off selected items! Offer ends 2 June — members still enjoy 10% off after that.",startDate:"2026-05-25",endDate:"2026-06-02",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l05",brand:"Limited Edition",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"VANS 40% OFF",description:"All Vans shoes 40% off. Skateboarding clothing at RM99 each — while stocks last!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l06",brand:"Anta Superstore",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"MEMBER SPECIAL 50% OFF",description:"50% off selected shoes for members! Join membership for FREE today, spend RM200 and walk out with an RM50 voucher — redeemable on the spot.",startDate:"2026-05-25",endDate:"2026-05-31",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l07",brand:"Fitness Concept",city:"Kuching",mall:"The Spring",category:"Health & Beauty",storeLocation:"The Spring",headline:"UP TO 60% OFF",description:"Up to 60% off on selected fitness items!",startDate:"2026-05-25",endDate:"2026-06-30",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l08",brand:"Adidas",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"30-50% OFF SHOES",description:"30%–50% off selected shoes — while stocks last!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l09",brand:"Lovisa",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"FREE PIERCING",description:"Get your ears pierced for FREE!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l10",brand:"Guardian",city:"Kuching",mall:"The Spring",category:"Health & Beauty",storeLocation:"The Spring",headline:"FREE RM10 COUPON",description:"Get a FREE RM10 coupon with any purchase — just show your receipt!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l11",brand:"HWC Coffee",city:"Kuching",mall:"The Spring",category:"F&B",storeLocation:"The Spring",headline:"RM1.90 MONDAY SPECIAL",description:"HWC app members — get your 2nd handcrafted drink for only RM1.90 every Monday!",startDate:"2026-05-25",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  // ── 5 New deals ────────────────────────────────────────────────────────
+  {id:"l12",brand:"MLB",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"END SEASON SALE",description:"20% to 50% off during the End Season Sale — don't miss out!",startDate:"2026-06-06",endDate:"2026-06-30",featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l13",brand:"Anta Superstore",city:"Kuching",mall:"The Spring",category:"Fashion",storeLocation:"The Spring",headline:"BUY 1 FREE 1",description:"Buy 1 get 1 FREE on selected items — exclusive for members!",startDate:"2026-06-06",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l14",brand:"Optical 88",city:"Kuching",mall:"The Spring",category:"Health & Beauty",storeLocation:"The Spring",headline:"BUY 1 FREE 1 LENSES",description:"Parents Day Special — buy 1 pair of prescription lenses, get 1 FREE!",startDate:"2026-06-06",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l15",brand:"MUJI",city:"Kuching",mall:"The Spring",category:"Lifestyle",storeLocation:"The Spring",headline:"10% OFF WELCOME COUPON",description:"New members get 10% off with your welcome coupon — online exclusive!",startDate:"2026-06-06",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+  {id:"l16",brand:"Secret Recipe",city:"Kuching",mall:"The Spring",category:"F&B",storeLocation:"The Spring",headline:"LUNCH SET FROM RM21.50",description:"Daily 12–3PM: Lunch Set with 1 main course + 1 beverage from RM21.50. Add a slice of cake at 20% off with any lunch set!",startDate:"2026-06-06",endDate:null,featured:false,saves:0,shares:0,isSecret:false},
+];
+
+let deals = [];
+let savedIds = [];
+let city = "Kuching";
+let mall = "All Malls";
+let cat = "All";
+let feedItems = [];
+let quickFilter = "All";
+
+const icons = {
+  bookmark:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
+  bookmarkFill:`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
+  share:`<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg>`,
+  map:`<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  fire:`<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c4.4 0 8-3.3 8-7.8 0-3.4-2-5.9-4.7-8.6-.5-.5-1.3-.1-1.2.6.1 1.4-.3 2.8-1.2 3.8-.6-2.8-2.2-5.2-4.5-7-.6-.5-1.4.1-1.2.8.5 2.2-.3 3.8-1.4 5.4C4.7 10.7 4 12.3 4 14.2 4 18.7 7.6 22 12 22Z"/></svg>`
+};
+
+// SUPABASE CONFIG
+const SB_URL = "https://gudnlhthojqiukgtcwne.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1ZG5saHRob2pxaXVrZ3Rjd25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjY4MTksImV4cCI6MjA5MzU0MjgxOX0.Ism7tx96Gnyg22hr7V0cbVV4jVb_VLj1ZA_O2BvKyYw";
+const SB_HEADERS = { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` };
+
+async function load() {
+  try { savedIds = JSON.parse(localStorage.getItem("ada_saved")) || []; } catch { savedIds = []; }
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/deals?select=*&order=created_at.desc`, { headers: SB_HEADERS });
+    const data = await res.json();
+    const sbDeals = data && data.length ? data.map(mapRow) : [];
+    // LOCAL_DEALS are source of truth — always shown
+    // Only add Supabase deals that have a valid brand and aren't already in LOCAL
+    const localKeys = new Set(LOCAL_DEALS.map(d => d.brand + '|' + d.headline));
+    const extraSb = sbDeals.filter(d => d.brand && !localKeys.has(d.brand + '|' + (d.headline||'')));
+    deals = [...LOCAL_DEALS, ...extraSb];
+  } catch {
+    deals = [...LOCAL_DEALS];
+  }
+}
+
+function mapRow(r) {
+  return {
+    id: r.id, brand: r.brand, city: r.city, mall: r.mall, category: r.category,
+    headline: r.headline, description: r.description, storeLocation: r.store_location,
+    startDate: r.start_date, endDate: r.end_date, featured: r.featured, saves: r.saves || 0, shares: r.shares || 0,
+    isSecret: r.is_secret || false, unlockThreshold: r.unlock_threshold || 50, unlockMessage: r.unlock_message || '', tcText: r.tc_text || '', maxClaims: r.max_claims || 30, claimsCount: r.claims_count || 0
+  };
+}
+
+function save() {
+  localStorage.setItem("ada_saved", JSON.stringify(savedIds));
+}
+function esc(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function endOfDealDay(d) { const end = new Date(d); end.setHours(23,59,59,999); return end; }
+function isActiveDeal(d) {
+  const now = new Date();
+  // Use local date string comparison to avoid UTC timezone mismatch
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const startStr = d.startDate || '2000-01-01';
+  const endStr = d.endDate || '9999-12-31'; // null = ongoing
+  return startStr <= todayStr && endStr >= todayStr;
+}
+function isExpiredDeal(d) { return !isActiveDeal(d); }
+function daysLeft(d) {
+  const now = new Date();
+  const end = endOfDealDay(d);
+  return Math.max(0, Math.ceil((end - now) / 86400000));
+}
+function urgency(days, expired=false) {
+  if (expired) return "Expired";
+  if (!isFinite(days)) return "Ongoing";
+  if (days <= 1) return "Ends today";
+  if (days <= 3) return `${days} days left`;
+  return `${days}d left`;
+}
+function fmtDate(d) { return new Date(d).toLocaleDateString("en-MY", { day:"numeric", month:"short" }); }
+function baseDeals() {
+  return deals
+    .filter(d => isActiveDeal(d))
+    .filter(d => d.city === city)
+    .filter(d => mall === "All Malls" || d.mall === mall)
+    .filter(d => cat === "All" || d.category === cat);
+}
+function favouriteDeals(limit=5) {
+  return baseDeals()
+    .slice()
+    .sort((a,b) => ((b.saves || 0) + (b.shares || 0) * 0.35) - ((a.saves || 0) + (a.shares || 0) * 0.35))
+    .slice(0, limit);
+}
+function currentFavourite() {
+  return favouriteDeals(1)[0];
+}
+function isFavouriteDeal(d) {
+  const fav = currentFavourite();
+  return fav && fav.id === d.id;
+}
+function displaySaves(d) {
+  return (d.saves || 0) + 13 + (savedIds.includes(d.id) ? 1 : 0);
+}
+function filteredDeals() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekStr = weekAgo.toISOString().split('T')[0];
+  let items = deals.filter(d => isActiveDeal(d) && d.city === city);
+  if (quickFilter === 'ending-today') items = items.filter(d => d.endDate === todayStr);
+  else if (quickFilter === 'top-picks') items = items.filter(d => d.featured || isFavouriteDeal(d));
+  else if (quickFilter === 'new-week') items = items.filter(d => d.startDate && d.startDate >= weekStr);
+  else if (quickFilter && quickFilter !== 'All') items = items.filter(d => d.category === quickFilter);
+  // One primary deal per brand in default view
+  if (!quickFilter || quickFilter === 'All') {
+    const seen = new Set();
+    items = items.filter(d => { if (seen.has(d.brand)) return false; seen.add(d.brand); return true; });
+  }
+  return items.sort((a,b) => new Date(a.endDate) - new Date(b.endDate));
+}
+
+function quickFiltersHtml(theme='dark') {
+  const filters = [
+    { label: 'All', key: 'All' },
+    { label: '⏰ Ending Today', key: 'ending-today' },
+    { label: '⭐ Top Picks', key: 'top-picks' },
+    { label: '🆕 New This Week', key: 'new-week' },
+    { label: '🍔 Food', key: 'F&B' },
+    { label: '👗 Fashion', key: 'Fashion' },
+    { label: '🎭 Entertainment', key: 'Entertainment' },
+    { label: '💄 Beauty', key: 'Health & Beauty' },
+    { label: '📱 Electronics', key: 'Electronics' },
+    { label: '📚 Lifestyle', key: 'Lifestyle' },
+  ];
+  const cls = theme === 'dark' ? 'fs-chip' : 'all-chip';
+  return filters.map(f => `<button class="${cls} ${quickFilter===f.key?'active':''}" onclick="setQuickFilter('${f.key}')">${f.label}</button>`).join('');
+}
+
+function setQuickFilter(v) { quickFilter = v; renderFeed(); if(document.getElementById('allPanel')?.classList.contains('show')) renderAllDeals(); }
+function todayStats() {
+  const items = baseDeals();
+  return {
+    total: items.length,
+    today: items.filter(d => d.endDate && daysLeft(d.endDate) <= 1).length,
+    soon: items.filter(d => d.endDate && daysLeft(d.endDate) <= 14).length,
+    popular: items.filter(d => (d.saves || 0) >= 90 || d.featured).length
+  };
+}
+function renderFeed() {
+  feedItems = filteredDeals();
+  renderFilterStrip();
+  const feed = document.getElementById('feed');
+  if (!feed) return;
+  if (!feedItems.length) {
+    feed.innerHTML = `<section class="deal-screen" style="--card-a:#27231F;--card-b:#15120F">
+      <div class="noise"></div>
+      <div class="content">
+        <div class="deal-body">
+          <div class="brand" style="font-size:28px;">No deals here yet</div>
+          <p class="desc">Try a different filter or check back soon.</p>
+          <div class="deal-tags"><button class="category-pill" onclick="resetFilters()">Clear filters</button></div>
+        </div>
+      </div>
+    </section>`;
+    return;
+  }
+  feed.innerHTML = renderPulseScreen() + feedItems.map((d, i) => renderDeal(d, i)).join('');
+  if (document.getElementById('allPanel')?.classList.contains('show')) renderAllDeals();
+}
+
+function renderPulseScreen() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const active = deals.filter(d => isActiveDeal(d) && d.city === city);
+  const endingToday = active.filter(d => d.endDate === todayStr);
+  const endingSoon = active.filter(d => d.endDate && (() => { const dl = daysLeft(d.endDate); return dl >= 0 && dl <= 14; })()).slice(0,6);
+  const topPicks = active.filter(d => d.featured || isFavouriteDeal(d)).slice(0,6);
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const weekStr = weekAgo.toISOString().split('T')[0];
+  const newDeals = active.filter(d => d.startDate && d.startDate >= weekStr).slice(0,6);
+
+  const todayCount = endingToday.length;
+  const totalActive = active.length;
+
+  function miniCard(d, accent) {
+    return `<div onclick="jumpToDeal('${esc(d.id)}')" style="flex-shrink:0;min-width:160px;max-width:160px;background:${accent||'rgba(255,255,255,.1)'};border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:12px 14px;cursor:pointer;">
+      <div style="font-size:11px;opacity:.6;margin-bottom:4px;">${esc(d.mall)}</div>
+      <div style="font-size:14px;font-weight:800;margin-bottom:3px;line-height:1.2;">${esc(d.brand)}</div>
+      <div style="font-size:12px;opacity:.85;line-height:1.3;">${esc(d.headline||d.description.slice(0,40))}</div>
+      <div style="margin-top:8px;font-size:10px;font-weight:700;opacity:.6;">${!d.endDate ? 'Ongoing' : d.endDate === todayStr ? 'Ends today' : 'Ends ' + fmtDate(d.endDate)}</div>
+    </div>`;
+  }
+
+  let sectionsHtml = '';
+
+  if (topPicks.length) {
+    sectionsHtml += `<div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;opacity:.55;margin-bottom:10px;">⭐ Top Picks Today</div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">${topPicks.map(d=>miniCard(d,'rgba(249,115,22,.2)')).join('')}</div>
+    </div>`;
+  }
+
+  if (endingSoon.length) {
+    sectionsHtml += `<div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;opacity:.55;margin-bottom:10px;">⏰ Ending Soon</div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">${endingSoon.map(d=>miniCard(d,'rgba(220,38,38,.2)')).join('')}</div>
+    </div>`;
+  }
+
+  if (newDeals.length) {
+    sectionsHtml += `<div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;opacity:.55;margin-bottom:10px;">🆕 New This Week</div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">${newDeals.map(d=>miniCard(d,'rgba(16,185,129,.2)')).join('')}</div>
+    </div>`;
+  }
+
+  return `<section class="deal-screen pulse-screen" style="--card-a:#1A1411;--card-b:#0D0B09;">
+    <div class="noise"></div>
+    <div class="pulse-card">
+      <div class="pulse-kicker">${icons.fire} AdaDeals · The Spring, Kuching</div>
+      <div class="pulse-title">Got deals? <span class="highlight-word">Ada.</span></div>
+      <p style="font-size:13px;opacity:.55;margin-bottom:6px;margin-top:4px;">Most people miss these. You won't.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+        <span style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;">${totalActive} deals live</span>
+        ${todayCount ? `<span style="background:rgba(220,38,38,.2);border:1px solid rgba(220,38,38,.3);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;color:#FCA5A5;">${todayCount} ending today</span>` : ''}
+        ${newDeals.length ? `<span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.25);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;color:#6EE7B7;">${newDeals.length} new this week</span>` : ''}
+      </div>
+      ${sectionsHtml}
+    </div>
+  </section>`;
+}
+
+
+function renderDeal(d, i) {
+  if (d.isSecret) return renderSecretCard(d);
+  const weekAgoD = new Date(); weekAgoD.setDate(weekAgoD.getDate()-7);
+  const weekStr = weekAgoD.toISOString().split('T')[0];
+  const saved = savedIds.includes(d.id);
+  const days = daysLeft(d.endDate);
+  const colors = palette[d.category] || ["#92400E", "#1C1917"];
+  const isHot = days <= 3 || (d.saves || 0) > 90;
+  const isFav = isFavouriteDeal(d);
+  return `<section class="deal-screen" id="deal-${esc(d.id)}" style="--card-a:${colors[0]};--card-b:${colors[1]}">
+    <div class="noise"></div>
+    <div class="content">
+      <div class="deal-meta-top">
+        <div class="mall-pill">📍 ${esc(d.mall)}</div>
+        <div class="urgency-pill ${days > 7 ? 'good' : ''}">⏱ ${urgency(days, isExpiredDeal(d))}</div>
+      </div>
+      <div class="deal-body" ondblclick="toggleSave('${esc(d.id)}')">
+        <div class="near-banner"><strong>📍 You’re browsing ${esc(d.mall)}</strong><span>Here’s what’s worth checking out right now</span></div>
+        <div class="featured-row">${isFav ? `<span class="favourite-ribbon">🏆 People’s Favourite</span>` : d.featured ? `<span class="featured-pill">${icons.fire} Featured</span>` : isHot ? `<span class="featured-pill">${icons.fire} Popular today</span>` : ''}</div>
+        <div class="brand">${esc(d.brand)}</div>
+        <div class="headline">${esc(d.headline || d.description.split('—')[0] || 'Deal alert')}</div>
+        <p class="desc">${esc(d.description)}</p>
+        
+        <div class="deal-hint">Double tap anywhere on the card to save.</div>
+        <div class="deal-tags">
+          <span class="category-pill">${esc(d.category)}</span>
+          <span class="tiny-pill">${esc(d.city)}</span>
+          ${d.endDate ? `<span class="tiny-pill">Ends ${fmtDate(d.endDate)}</span>` : ''}
+        </div>
+      </div>
+      <div class="side-actions">
+        <div class="action"><button class="round-action ${saved ? 'saved' : ''}" onclick="toggleSave('${esc(d.id)}')">${saved ? icons.bookmarkFill : icons.bookmark}</button><span class="action-count">Save</span></div>
+        <div class="action"><button class="round-action" onclick="shareDeal('${esc(d.id)}')">${icons.share}</button><span class="action-count">Share</span></div>
+        <div class="action"><button class="round-action" onclick="showToast('${esc(d.mall)} • ${esc(d.city)}')">${icons.map}</button><span class="action-count">Mall</span></div>
+      </div>
+    </div>
+  </section>`;
+}
+function renderSheet() {
+  const sheet = document.getElementById('sheetContent');
+  const malls = MALLS_BY_CITY[city] || [];
+  sheet.innerHTML = `
+    <div class="sheet-section"><div class="sheet-label">Quick picks</div><div class="chip-row">${quickFiltersHtml('light')}</div></div>
+    <div class="sheet-section"><div class="sheet-label">City</div><div class="chip-row">${CITIES.map(c => `<button class="filter-chip ${city===c?'active':''}" onclick="setCity('${c}')">${esc(c)}</button>`).join('')}</div></div>
+    <div class="sheet-section"><div class="sheet-label">Mall</div><div class="chip-row">${malls.map(m => `<button class="filter-chip ${mall===m?'active':''}" onclick="setMall('${esc(m)}')">${esc(m)}</button>`).join('')}</div></div>
+    <div class="sheet-section"><div class="sheet-label">Category</div><div class="chip-row">${CATEGORIES.map(c => `<button class="filter-chip ${cat===c?'active':''}" onclick="setCat('${esc(c)}')">${esc(c)}</button>`).join('')}</div></div>
+  `;
+}
+function setCity(c) { city = c; mall = "All Malls"; renderFeed(); }
+function setMall(m) { mall = m; renderFeed(); }
+function setCat(c) { cat = c; renderFeed(); }
+function resetFilters() { city = "Kuching"; mall = "All Malls"; cat = "All"; quickFilter = "All"; renderFilterStrip(); renderFeed(); }
+function openSheet() { /* removed - now inline */ }
+function closeSheet() { document.getElementById('sheetBackdrop')?.classList.remove('show'); document.getElementById('filterSheet')?.classList.remove('show'); }
+function showFeed() { closePanels(); closeSheet(); document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active')); document.getElementById('nav-feed').classList.add('active'); }
+function openPanel(type) {
+  closeSheet();
+  closePanels(false);
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  const navMap = { search:'nav-search', all:'nav-all', saved:'nav-saved' };
+  if(navMap[type]) { const nb = document.getElementById(navMap[type]); if(nb) nb.classList.add('active'); }
+  if(type === 'search') { document.getElementById('searchPanel').classList.add('show'); setTimeout(()=>document.getElementById('searchInput').focus(), 80); renderSearch(); }
+  if(type === 'all') { document.getElementById('allPanel').classList.add('show'); renderAllDeals(); }
+  if(type === 'saved') { document.getElementById('savedPanel').classList.add('show'); renderSaved(); }
+  if(type === 'add') {
+    document.getElementById('addPanel').classList.add('show'); setupForm();
+    const todayVal = new Date().toISOString().split('T')[0];
+    const sd = document.getElementById('fStartDate');
+    if (sd && !sd.value) sd.value = todayVal;
+  }
+}
+function closePanels(markFeed=true) {
+  ['searchPanel','savedPanel','allPanel','addPanel'].forEach(id => document.getElementById(id).classList.remove('show'));
+  if(markFeed) { document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active')); document.getElementById('nav-feed').classList.add('active'); }
+}
+
+function recentlyExpiredDeals() {
+  const now = new Date();
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+  return deals
+    .filter(d => d.brand && d.endDate && isExpiredDeal(d))
+    .filter(d => d.city === city)
+    .filter(d => mall === "All Malls" || d.mall === mall)
+    .filter(d => cat === "All" || d.category === cat)
+    .filter(d => endOfDealDay(d.endDate) >= cutoff && endOfDealDay(d.endDate) < now)
+    .sort((a,b) => endOfDealDay(b.endDate) - endOfDealDay(a.endDate))
+    .slice(0, 6);
+}
+function renderAllDeals() {
+  const items = filteredDeals();
+  const expired = recentlyExpiredDeals();
+  const fav = currentFavourite();
+  const filterWrap = document.getElementById('allFilters');
+  const results = document.getElementById('allResults');
+  const malls = MALLS_BY_CITY[city] || [];
+  filterWrap.innerHTML = `
+    <div class="all-count"><strong>Today at ${esc(mall === 'All Malls' ? city : mall)}</strong><br>${todayStats().today} ending today · ${todayStats().popular} popular picks · ${todayStats().total} active</div>
+    <div class="all-toolbar">${quickFiltersHtml('light')}</div>
+    <div class="all-toolbar">${CITIES.map(c => `<button class="mini-chip ${city===c?'active':''}" onclick="setCity('${c}')">${esc(c)}</button>`).join('')}</div>
+    <div class="all-toolbar">${malls.map(m => `<button class="mini-chip ${mall===m?'active':''}" onclick="setMall('${esc(m)}')">${esc(m)}</button>`).join('')}</div>
+    <div class="all-toolbar">${CATEGORIES.map(c => `<button class="mini-chip ${cat===c?'active':''}" onclick="setCat('${esc(c)}')">${esc(c)}</button>`).join('')}</div>
+    <div class="all-count">${items.length} active deal${items.length === 1 ? '' : 's'} in ${esc(city)}${mall !== 'All Malls' ? ' · ' + esc(mall) : ''}</div>
+  `;
+  const favouriteHtml = fav ? `<div class="fav-spotlight">
+    <div class="fav-kicker">🏆 People’s Favourite</div>
+    <div class="fav-title">${esc(fav.brand)} — ${esc(fav.headline || 'Deal alert')}</div>
+    <div class="fav-meta">${esc(fav.mall)} · ${esc(fav.city)}${fav.endDate ? ' · Ends ' + fmtDate(fav.endDate) : ''}</div>
+    <div class="fav-desc">${esc(fav.description)}</div>
+    <div class="fav-footer"><button class="fav-open" onclick="jumpToDeal('${esc(fav.id)}')">View deal →</button></div>
+  </div>` : '';
+  const activeHtml = items.length ? `<div class="all-grid">${items.map(allDealCard).join('')}</div>` : `<div class="empty-state"><strong>No active deals here yet</strong>Try another mall or category.</div>`;
+  const expiredHtml = expired.length ? `<div class="expired-title">Recently expired</div><div class="expired-note">Kept here for trust and tracking. These no longer show in the feed, search, or saved active deals.</div><div class="all-grid">${expired.map(d => allDealCard(d, true)).join('')}</div>` : '';
+  results.innerHTML = favouriteHtml + activeHtml + expiredHtml;
+}
+function allDealCard(d, expired=false) {
+  const saved = savedIds.includes(d.id);
+  const days = d.endDate ? daysLeft(d.endDate) : Infinity;
+  const colors = palette[d.category] || ['#F97316', '#FBBF24'];
+  const deleteBtn = curatorUnlocked
+    ? `<button class="all-btn" style="color:#C0392B;border-color:#FDECEA;background:#FDECEA;" onclick="event.stopPropagation();deleteDeal('${esc(d.id)}','${esc(d.brand)}')">✕ Remove</button>`
+    : '';
+  return `<article class="all-card ${expired ? 'expired' : ''}" style="--card-accent:${colors[0]}" onclick="event.target.closest('button') || (expired ? showToast('This deal has expired') : jumpToDeal('${esc(d.id)}'))">
+    <div>
+      <div class="all-card-top">
+        <div><div class="all-brand">${esc(d.brand)}</div><div class="all-mall">${esc(d.mall)} · ${esc(d.city)}</div>${d.storeLocation ? `<div class="all-store-loc">📍 ${esc(d.storeLocation)}</div>` : ''}</div>
+        <div class="all-urg ${expired ? 'expired' : days > 7 ? 'good' : ''}">${urgency(days, expired)}</div>
+      </div>
+      <p class="all-desc"><strong>${esc(d.headline || 'Deal alert')}</strong> — ${esc(d.description)}<br><span style="color:#9A9288;font-size:12px;font-weight:700;">${expired ? (d.endDate ? 'Expired on ' + fmtDate(d.endDate) : 'Expired') : isFavouriteDeal(d) ? "People's favourite" : days <= 1 ? 'Ending today' : d.endDate ? 'Active deal' : 'Ongoing'}</span></p>
+    </div>
+    <div class="all-card-bottom">
+      <span class="all-cat">${esc(d.category)}</span>
+      <div class="all-actions">
+        ${deleteBtn}
+        <button class="all-btn" onclick="event.stopPropagation();shareDeal('${esc(d.id)}')">${icons.share.replaceAll('23','17')} Share</button>
+        <button class="all-btn ${saved ? 'saved' : ''}" onclick="event.stopPropagation();toggleSave('${esc(d.id)}')">${saved ? icons.bookmarkFill.replaceAll('24','17') : icons.bookmark.replaceAll('24','17')} ${saved ? 'Saved' : 'Save'}</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+async function deleteDeal(id, brand) {
+  if (!confirm('Remove "' + brand + '" from the feed?')) return;
+  showToast('Removing…');
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, { method: 'DELETE', headers: SB_HEADERS });
+    if (!res.ok) throw new Error();
+    deals = deals.filter(d => d.id !== id);
+    savedIds = savedIds.filter(s => s !== id);
+    save(); renderFeed(); renderAllDeals();
+    showToast(brand + ' removed');
+  } catch { showToast('Error removing — try again'); }
+}
+
+function resultCard(d) {
+  return `<div class="result-card" onclick="jumpToDeal('${esc(d.id)}')"><div class="result-row"><div><div class="result-brand">${esc(d.brand)}</div><div class="result-mall">${esc(d.mall)} · ${esc(d.city)}</div>${d.storeLocation ? `<div class="result-store-loc">📍 ${esc(d.storeLocation)}</div>` : ''}</div><div class="result-urg">${urgency(daysLeft(d.endDate))}</div></div><div class="result-desc">${esc(d.headline || '')} — ${esc(d.description)}</div></div>`;
+}
+function renderSearch() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const results = deals.filter(d => isActiveDeal(d) && (!q || [d.brand,d.mall,d.city,d.category,d.description,d.headline].join(' ').toLowerCase().includes(q))).slice(0, 30);
+  document.getElementById('searchResults').innerHTML = results.length ? results.map(resultCard).join('') : `<div class="empty-state"><strong>No deals found</strong>Try another brand, mall, or category.</div>`;
+}
+function renderSaved() {
+  const results = deals.filter(d => savedIds.includes(d.id) && isActiveDeal(d));
+  document.getElementById('savedResults').innerHTML = results.length ? results.map(resultCard).join('') : `<div class="empty-state"><strong>No saved deals yet</strong>Tap the bookmark on any deal to save it here.</div>`;
+}
+function jumpToDeal(id) {
+  closePanels();
+  const target = deals.find(d => d.id === id);
+  if(target) {
+    city = target.city; mall = "All Malls"; cat = "All"; quickFilter = "All"; renderFeed();
+    setTimeout(()=>document.getElementById(`deal-${CSS.escape(id)}`)?.scrollIntoView({behavior:'smooth'}), 80);
+    if(typeof umami !== 'undefined') umami.track('deal-view', { deal: target.brand, headline: target.headline || '', mall: target.mall, category: target.category });
+  }
+}
+async function toggleSave(id) {
+  const has = savedIds.includes(id);
+  savedIds = has ? savedIds.filter(x => x !== id) : [...savedIds, id];
+  deals = deals.map(d => d.id === id ? {...d, saves: Math.max(0, (d.saves || 0) + (has ? -1 : 1))} : d);
+  save(); renderFeed(); renderSaved(); renderAllDeals();
+  showToast(has ? 'Removed from saved' : 'Saved. Nice one.');
+  const deal = deals.find(d => d.id === id);
+  if (!has && deal && typeof umami !== 'undefined') umami.track('deal-save', { deal: deal.brand, mall: deal.mall, category: deal.category });
+  // Update save count in Supabase silently
+  if (deal) {
+    fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, {
+      method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ saves: deal.saves })
+    }).catch(() => {});
+  }
+}
+let activeShareDeal = null;
+function shareDeal(id) {
+  const d = deals.find(x => x.id === id);
+  if (!d) return;
+  activeShareDeal = d;
+  d.shares = (d.shares || 0) + 1;
+  save();
+  fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, { method:'PATCH', headers:SB_HEADERS, body:JSON.stringify({shares:d.shares}) }).catch(()=>{});
+  if(typeof umami !== 'undefined') umami.track('share-opened', { deal: d.brand, mall: d.mall, category: d.category });
+  document.getElementById('sdpBrand').textContent = d.brand + ' — ' + (d.headline || 'Deal alert');
+  document.getElementById('sdpSub').textContent = d.mall + ' · ' + d.city + (d.endDate ? ' · Ends ' + fmtDate(d.endDate) : '');
+  document.getElementById('shareOverlay').classList.add('show');
+}
+function closeShareSheet() {
+  document.getElementById('shareOverlay').classList.remove('show');
+  activeShareDeal = null;
+}
+function shareVia(platform) {
+  const d = activeShareDeal;
+  if (!d) return;
+  const siteUrl = window.location.href.split('?')[0];
+  const text = `${d.brand} @ ${d.mall}, ${d.city}\n\n${d.headline || 'Deal alert'}\n${d.description}${d.storeLocation ? '\n📍 ' + d.storeLocation : ''}\n\n${d.endDate ? 'Ends ' + fmtDate(d.endDate) + '\n' : ''}\nFind more deals on AdaDeals 👉 ${siteUrl}`;
+  const encodedText = encodeURIComponent(text);
+  const encodedUrl = encodeURIComponent(siteUrl);
+
+  if (platform === 'whatsapp') {
+    if(typeof umami !== 'undefined') umami.track('deal-share', { platform: 'whatsapp', deal: d.brand, mall: d.mall });
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    closeShareSheet();
+  } else if (platform === 'facebook') {
+    if(typeof umami !== 'undefined') umami.track('deal-share', { platform: 'facebook', deal: d.brand, mall: d.mall });
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodeURIComponent(d.brand + ' — ' + (d.headline || 'Deal alert') + '. Find it on AdaDeals.')}`, '_blank');
+    closeShareSheet();
+  } else if (platform === 'instagram') {
+    if(typeof umami !== 'undefined') umami.track('deal-share', { platform: 'instagram', deal: d.brand, mall: d.mall });
+    navigator.clipboard.writeText(text).then(() => {
+      closeShareSheet();
+      showToast('Copied! Open Instagram and paste into your story or post 📸');
+    }).catch(() => showToast('Copy manually then paste to Instagram'));
+  } else if (platform === 'copy') {
+    if(typeof umami !== 'undefined') umami.track('deal-share', { platform: 'copy', deal: d.brand, mall: d.mall });
+    navigator.clipboard.writeText(text).then(() => {
+      closeShareSheet();
+      showToast('Copied to clipboard 📋');
+    }).catch(() => showToast('Could not copy — try manually'));
+  }
+}
+function setupForm() {
+  document.getElementById('fCity').innerHTML = CITIES.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('fCat').innerHTML = CATEGORIES.filter(c=>c!=="All").map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('fCity').value = city;
+  updateFormMalls();
+}
+function updateFormMalls() {
+  const c = document.getElementById('fCity').value;
+  document.getElementById('fMall').innerHTML = (MALLS_BY_CITY[c] || []).filter(m=>m!=="All Malls").map(m=>`<option>${m}</option>`).join('');
+}
+async function submitDeal() {
+  const brand = document.getElementById('fBrand').value.trim();
+  const headline = document.getElementById('fHeadline').value.trim();
+  const description = document.getElementById('fDesc').value.trim();
+  const endDate = document.getElementById('fDate').value;
+  const dcity = document.getElementById('fCity').value;
+  const dmall = document.getElementById('fMall').value;
+  const dcat = document.getElementById('fCat').value;
+  const startDate = document.getElementById('fStartDate').value || new Date().toISOString().split('T')[0];
+  const storeLocation = document.getElementById('fStoreLoc')?.value.trim() || '';
+  const featured = document.getElementById('fFeatured').checked;
+  if (!brand || !description || !endDate) { showToast('Fill in brand, description and end date'); return; }
+  if (endDate < startDate) { showToast('End date must be after start date'); return; }
+  showToast(editingId ? 'Saving changes…' : 'Adding deal…');
+  try {
+    if (editingId) {
+      // EDIT mode — PATCH existing deal
+      const res = await fetch(`${SB_URL}/rest/v1/deals?id=eq.${editingId}`, {
+        method: 'PATCH',
+        headers: { ...SB_HEADERS, "Prefer": "return=representation" },
+        body: JSON.stringify({ brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured,
+          is_secret: document.getElementById('fIsSecret').checked,
+          unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
+          unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
+          tc_text: document.getElementById('fTc')?.value.trim() || '',
+          max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30) })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const refreshRes = await fetch(`${SB_URL}/rest/v1/deals?select=*&order=created_at.desc`, { headers: SB_HEADERS });
+      const refreshData = await refreshRes.json();
+      deals = refreshData && refreshData.length ? refreshData.map(mapRow) : deals;
+      city = dcity; mall = "All Malls"; cat = "All";
+      cancelEdit();
+      ['fBrand','fHeadline','fDesc','fStartDate','fDate','fStoreLoc','fUnlockMsg','fTc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+      document.getElementById('fFeatured').checked = false;
+      renderFeed(); openManage(); showToast('Changes saved ✓');
+      return;
+    }
+    // ADD mode — If featured, unfeature others in same city first
+    if (featured) {
+      await fetch(`${SB_URL}/rest/v1/deals?city=eq.${encodeURIComponent(dcity)}&featured=eq.true`, {
+        method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ featured: false })
+      });
+    }
+    const res = await fetch(`${SB_URL}/rest/v1/deals`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, "Prefer": "return=representation" },
+      body: JSON.stringify({ brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured, saves: 0, shares: 0,
+        is_secret: document.getElementById('fIsSecret').checked,
+        unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
+        unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
+        tc_text: document.getElementById('fTc')?.value.trim() || '',
+        max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30),
+        claims_count: 0 })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    // Re-fetch all deals fresh from Supabase so nothing gets filtered incorrectly
+    const refreshRes = await fetch(`${SB_URL}/rest/v1/deals?select=*&order=created_at.desc`, { headers: SB_HEADERS });
+    const refreshData = await refreshRes.json();
+    deals = refreshData && refreshData.length ? refreshData.map(mapRow) : deals;
+    city = dcity; mall = "All Malls"; cat = "All";
+    renderFeed(); closePanels(); showToast('Deal live 🎉');
+    ['fBrand','fHeadline','fDesc','fStartDate','fDate','fStoreLoc','fUnlockMsg','fTc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); document.getElementById('fFeatured').checked = false; document.getElementById('fIsSecret').checked = false; toggleSecretFields();
+  } catch(e) {
+    console.error('Submit error:', e);
+    showToast('Error: ' + (e.message || 'check console'));
+  }
+}
+
+function toggleSecretFields() {
+  const isSecret = document.getElementById('fIsSecret').checked;
+  const sf = document.getElementById('secretFields');
+  sf.style.display = isSecret ? 'flex' : 'none';
+}
+
+let activeClaim = null;
+async function claimDeal(id) {
+  const d = deals.find(x => x.id === id);
+  if (!d) return;
+  if (d.claimsCount >= d.maxClaims) { showToast('All claims have been taken!'); return; }
+  activeClaim = d;
+  document.getElementById('cmIcon').textContent = '🎉';
+  document.getElementById('cmBrand').textContent = d.brand + ' @ ' + d.mall;
+  document.getElementById('cmMsg').textContent = d.unlockMessage || 'You unlocked a secret deal!';
+  document.getElementById('cmTc').textContent = d.tcText || 'Show this screen to staff to claim.';
+  document.getElementById('cmClaims').textContent = (d.maxClaims - d.claimsCount) + ' of ' + d.maxClaims + ' claims remaining';
+  document.getElementById('claimModal').classList.add('show');
+}
+async function confirmShow() {
+  if (!activeClaim) return;
+  document.getElementById('cmIcon').textContent = '✅';
+  document.getElementById('cmShow' + 'Btn') && (document.querySelector('.cm-show-btn').textContent = 'Claimed!');
+  if(typeof umami !== 'undefined') umami.track('secret-promo-claimed', { deal: activeClaim.brand, mall: activeClaim.mall });
+  try {
+    const newCount = (activeClaim.claimsCount || 0) + 1;
+    await fetch(`${SB_URL}/rest/v1/deals?id=eq.${activeClaim.id}`, {
+      method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ claims_count: newCount })
+    });
+    deals = deals.map(d => d.id === activeClaim.id ? {...d, claimsCount: newCount} : d);
+    renderFeed(); renderAllDeals();
+  } catch {}
+  showToast('Claimed! Show this screen to staff 🎉');
+}
+function closeClaimModal() {
+  document.getElementById('claimModal').classList.remove('show');
+  document.querySelector('.cm-show-btn').textContent = '📱 Show this to staff';
+  activeClaim = null;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 1800);
+}
+
+
+// CURATOR ACCESS
+let curatorTaps = 0, curatorTimer = null, curatorUnlocked = false;
+function handleLogoBrand() {
+  curatorTaps++;
+  clearTimeout(curatorTimer);
+  curatorTimer = setTimeout(() => { curatorTaps = 0; }, 800);
+  if (curatorTaps >= 5) { curatorTaps = 0; openCurator(); }
+}
+function openCurator() {
+  document.getElementById('curatorOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('curatorPw').focus(), 100);
+}
+function closeCurator() {
+  document.getElementById('curatorOverlay').classList.remove('show');
+  document.getElementById('curatorPw').value = '';
+}
+function checkCuratorPw() {
+  const pw = document.getElementById('curatorPw').value;
+  if (pw && pw === (window.ADA_CONFIG && window.ADA_CONFIG.curatorPw)) {
+    curatorUnlocked = true;
+    closeCurator();
+    showToast('Welcome, curator 👋 — tap logo 5x to manage');
+    openManage();
+  } else {
+    document.getElementById('curatorPw').style.borderColor = '#F97316';
+    document.getElementById('curatorPw').value = '';
+    document.getElementById('curatorPw').placeholder = 'Wrong password';
+    setTimeout(() => {
+      document.getElementById('curatorPw').style.borderColor = '';
+      document.getElementById('curatorPw').placeholder = 'Password';
+    }, 1400);
+  }
+}
+
+
+// MANAGE PANEL
+function openManage() {
+  if (!curatorUnlocked) { openCurator(); return; }
+  closePanels();
+  document.getElementById('managePanel').classList.add('show');
+  renderManage();
+}
+
+function renderManage() {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const scheduled = deals.filter(d => d.startDate && d.startDate > todayStr).sort((a,b) => a.startDate.localeCompare(b.startDate));
+  const live = deals.filter(d => isActiveDeal(d)).sort((a,b) => new Date(a.endDate) - new Date(b.endDate));
+
+  let html = '';
+
+  html += `<div class="manage-section">
+    <div class="manage-section-title">📅 Scheduled <span>${scheduled.length}</span></div>`;
+  if (!scheduled.length) {
+    html += `<div class="manage-empty">No scheduled deals yet.<br>Set a future start date when adding a deal.</div>`;
+  } else {
+    html += scheduled.map(d => manageCard(d, 'scheduled')).join('');
+  }
+  html += `</div>`;
+
+  html += `<div class="manage-section" style="margin-top:20px;">
+    <div class="manage-section-title">🟢 Live now <span>${live.length}</span></div>`;
+  if (!live.length) {
+    html += `<div class="manage-empty">No live deals right now.</div>`;
+  } else {
+    html += live.map(d => manageCard(d, 'live')).join('');
+  }
+  html += `</div>`;
+
+  document.getElementById('manageContent').innerHTML = html;
+}
+
+function manageCard(d, type) {
+  const badge = type === 'scheduled'
+    ? `<span class="scheduled-badge">Goes live ${fmtDate(d.startDate)}</span>`
+    : `<span class="live-badge">Live${d.endDate ? ' · ends ' + fmtDate(d.endDate) : ''}</span>`;
+  return `<div class="manage-card">
+    <div class="manage-card-top">
+      <div>
+        <div class="manage-brand">${esc(d.brand)}</div>
+        <div class="manage-meta">${esc(d.mall)} · ${esc(d.city)} · ${esc(d.category)}</div>
+        <div class="manage-dates">${esc(d.startDate || '—')} → ${d.endDate ? esc(d.endDate) : 'No end date'}${badge}</div>
+        <div style="font-size:13px;color:#6B6560;line-height:1.4;">${esc(d.headline || '')}${d.headline && d.description ? ' — ' : ''}${esc(d.description || '')}</div>
+      </div>
+    </div>
+    <div class="manage-actions" style="margin-top:12px;">
+      <button class="manage-btn edit" onclick="editDeal('${esc(d.id)}')">✏️ Edit</button>
+      <button class="manage-btn del" onclick="deleteDeal('${esc(d.id)}','${esc(d.brand)}')">✕ Remove</button>
+    </div>
+  </div>`;
+}
+
+let editingId = null;
+function editDeal(id) {
+  const d = deals.find(x => x.id === id);
+  if (!d) return;
+  editingId = id;
+
+  // Pre-fill form with deal data
+  document.getElementById('fBrand').value = d.brand || '';
+  document.getElementById('fHeadline').value = d.headline || '';
+  document.getElementById('fDesc').value = d.description || '';
+  document.getElementById('fStartDate').value = d.startDate || '';
+  document.getElementById('fDate').value = d.endDate || '';
+  document.getElementById('fStoreLoc').value = d.storeLocation || '';
+  document.getElementById('fFeatured').checked = d.featured || false;
+
+  // Set city first, then update malls, then set mall
+  setupForm();
+  document.getElementById('fCity').value = d.city || 'Kuching';
+  updateFormMalls();
+  setTimeout(() => { document.getElementById('fMall').value = d.mall || ''; }, 50);
+  document.getElementById('fCat').value = d.category || 'Fashion';
+
+  // Show editing state
+  document.getElementById('addPanelTitle').textContent = 'Edit promotion';
+  document.getElementById('editingBadge').classList.add('show');
+  document.getElementById('submitBtn').textContent = 'Save changes';
+
+  closePanels();
+  document.getElementById('addPanel').classList.add('show');
+}
+
+function cancelEdit() {
+  editingId = null;
+  const t = document.getElementById('addPanelTitle'); if(t) t.textContent = 'Add promotion';
+  const b = document.getElementById('editingBadge'); if(b) b.classList.remove('show');
+  const s = document.getElementById('submitBtn'); if(s) s.textContent = 'Add to feed';
+}
+
+async function init() { await load(); setupForm(); renderFeed(); }
+init();
+
+function renderFilterStrip() {
+  const strip = document.getElementById('filterStrip');
+  if (!strip) return;
+  strip.innerHTML = `<div class="filter-strip-row">${quickFiltersHtml('dark')}</div>`;
+}
+</script>
+</body>
+</html>
