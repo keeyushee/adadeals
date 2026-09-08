@@ -20,19 +20,22 @@ Then open http://localhost:8000
 
 ## Configuration
 
-Before running or deploying, create your local config:
-
-```
-cp config.example.js config.js
-```
-
-Then edit `config.js` and set `curatorPw` to the real curator password.
-
-`config.js` is gitignored so the password stays out of this repository. Note that it is still readable by anyone who views the source of the deployed site — this gate keeps casual visitors out of the curator panel, it is not real access control. Anything that must actually be protected belongs behind Supabase row-level security.
+There is none — the curator password lives only as a Supabase Edge Function secret (`CURATOR_PASSWORD`), never in a deployed file. See "Backend setup" below.
 
 ## Deploying
 
-The site is hosted on Cloudflare Pages. Upload the folder contents — `index.html` plus your filled-in `config.js`. If `config.js` is missing the site still loads fine; only the curator panel stops unlocking.
+The site is hosted on Cloudflare Pages. Upload the folder contents — just `index.html`.
+
+## Backend setup (Supabase)
+
+The `deals` table's row-level security only allows public reads. All writes (add/edit/delete) go through the `manage-deal` Edge Function, which checks the curator password server-side and uses the service-role key. Visitor actions (save/share/claim) go through narrow, validated RPCs instead of direct table writes.
+
+One-time setup in the Supabase Dashboard:
+1. **SQL Editor** → paste and run `supabase/migrations/0001_lock_down_deals.sql`.
+2. **Edge Functions** → create a function named `manage-deal` → paste in `supabase/functions/manage-deal/index.ts` → Deploy.
+3. **Edge Functions → manage-deal → Secrets** → add `CURATOR_PASSWORD` set to the real curator password.
+
+No CLI required — both steps are done entirely in the dashboard.
 
 ## Curator panel
 
@@ -41,7 +44,7 @@ Tap the logo five times to reveal the curator entry, then enter the password. Fr
 ## Structure
 
 ```
-index.html          the entire site
-config.js           local secrets, gitignored
-config.example.js   template for the above
+index.html                          the entire site
+supabase/migrations/                RLS lock-down + visitor RPCs
+supabase/functions/manage-deal/     curator-only write path (server-side)
 ```
