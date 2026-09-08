@@ -612,7 +612,6 @@
 
 <div id="toast"></div>
 
-<script src="config.js"></script>
 <script>
 const CITIES = ["Kuching"];
 const MALLS_BY_CITY = {
@@ -678,6 +677,18 @@ const icons = {
 const SB_URL = "https://gudnlhthojqiukgtcwne.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1ZG5saHRob2pxaXVrZ3Rjd25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjY4MTksImV4cCI6MjA5MzU0MjgxOX0.Ism7tx96Gnyg22hr7V0cbVV4jVb_VLj1ZA_O2BvKyYw";
 const SB_HEADERS = { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` };
+const FN_URL = `${SB_URL}/functions/v1/manage-deal`;
+let curatorPassword = null;
+async function callManageFn(action, payload) {
+  const res = await fetch(FN_URL, {
+    method: 'POST',
+    headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` },
+    body: JSON.stringify({ password: curatorPassword, action, payload })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
 
 async function load() {
   try { savedIds = JSON.parse(localStorage.getItem("ada_saved")) || []; } catch { savedIds = []; }
@@ -1026,8 +1037,7 @@ async function deleteDeal(id, brand) {
   if (!confirm('Remove "' + brand + '" from the feed?')) return;
   showToast('Removing…');
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, { method: 'DELETE', headers: SB_HEADERS });
-    if (!res.ok) throw new Error();
+    await callManageFn('delete', { id });
     deals = deals.filter(d => d.id !== id);
     savedIds = savedIds.filter(s => s !== id);
     save(); renderFeed(); renderAllDeals();
@@ -1064,10 +1074,10 @@ async function toggleSave(id) {
   showToast(has ? 'Removed from saved' : 'Saved. Nice one.');
   const deal = deals.find(d => d.id === id);
   if (!has && deal && typeof umami !== 'undefined') umami.track('deal-save', { deal: deal.brand, mall: deal.mall, category: deal.category });
-  // Update save count in Supabase silently
+  // Update save count in Supabase silently via the validated RPC
   if (deal) {
-    fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, {
-      method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ saves: deal.saves })
+    fetch(`${SB_URL}/rest/v1/rpc/increment_deal_save`, {
+      method: 'POST', headers: SB_HEADERS, body: JSON.stringify({ p_deal_id: String(id), p_delta: has ? -1 : 1 })
     }).catch(() => {});
   }
 }
@@ -1078,7 +1088,7 @@ function shareDeal(id) {
   activeShareDeal = d;
   d.shares = (d.shares || 0) + 1;
   save();
-  fetch(`${SB_URL}/rest/v1/deals?id=eq.${id}`, { method:'PATCH', headers:SB_HEADERS, body:JSON.stringify({shares:d.shares}) }).catch(()=>{});
+  fetch(`${SB_URL}/rest/v1/rpc/increment_deal_share`, { method:'POST', headers:SB_HEADERS, body:JSON.stringify({p_deal_id:String(id)}) }).catch(()=>{});
   if(typeof umami !== 'undefined') umami.track('share-opened', { deal: d.brand, mall: d.mall, category: d.category });
   document.getElementById('sdpBrand').textContent = d.brand + ' — ' + (d.headline || 'Deal alert');
   document.getElementById('sdpSub').textContent = d.mall + ' · ' + d.city + (d.endDate ? ' · Ends ' + fmtDate(d.endDate) : '');
@@ -1144,18 +1154,13 @@ async function submitDeal() {
   showToast(editingId ? 'Saving changes…' : 'Adding deal…');
   try {
     if (editingId) {
-      // EDIT mode — PATCH existing deal
-      const res = await fetch(`${SB_URL}/rest/v1/deals?id=eq.${editingId}`, {
-        method: 'PATCH',
-        headers: { ...SB_HEADERS, "Prefer": "return=representation" },
-        body: JSON.stringify({ brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured,
-          is_secret: document.getElementById('fIsSecret').checked,
-          unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
-          unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
-          tc_text: document.getElementById('fTc')?.value.trim() || '',
-          max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30) })
-      });
-      if (!res.ok) throw new Error(await res.text());
+      // EDIT mode
+      await callManageFn('edit', { id: editingId, fields: { brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured,
+        is_secret: document.getElementById('fIsSecret').checked,
+        unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
+        unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
+        tc_text: document.getElementById('fTc')?.value.trim() || '',
+        max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30) } });
       const refreshRes = await fetch(`${SB_URL}/rest/v1/deals?select=*&order=created_at.desc`, { headers: SB_HEADERS });
       const refreshData = await refreshRes.json();
       deals = refreshData && refreshData.length ? refreshData.map(mapRow) : deals;
@@ -1168,22 +1173,15 @@ async function submitDeal() {
     }
     // ADD mode — If featured, unfeature others in same city first
     if (featured) {
-      await fetch(`${SB_URL}/rest/v1/deals?city=eq.${encodeURIComponent(dcity)}&featured=eq.true`, {
-        method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ featured: false })
-      });
+      await callManageFn('unfeature-city', { city: dcity });
     }
-    const res = await fetch(`${SB_URL}/rest/v1/deals`, {
-      method: 'POST',
-      headers: { ...SB_HEADERS, "Prefer": "return=representation" },
-      body: JSON.stringify({ brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured, saves: 0, shares: 0,
-        is_secret: document.getElementById('fIsSecret').checked,
-        unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
-        unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
-        tc_text: document.getElementById('fTc')?.value.trim() || '',
-        max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30),
-        claims_count: 0 })
-    });
-    if (!res.ok) throw new Error(await res.text());
+    await callManageFn('add', { brand, city: dcity, mall: dmall, category: dcat, headline: headline || 'Deal alert', description, store_location: storeLocation, start_date: startDate, end_date: endDate, featured, saves: 0, shares: 0,
+      is_secret: document.getElementById('fIsSecret').checked,
+      unlock_threshold: parseInt(document.getElementById('fThreshold')?.value || 50),
+      unlock_message: document.getElementById('fUnlockMsg')?.value.trim() || '',
+      tc_text: document.getElementById('fTc')?.value.trim() || '',
+      max_claims: parseInt(document.getElementById('fMaxClaims')?.value || 30),
+      claims_count: 0 });
     // Re-fetch all deals fresh from Supabase so nothing gets filtered incorrectly
     const refreshRes = await fetch(`${SB_URL}/rest/v1/deals?select=*&order=created_at.desc`, { headers: SB_HEADERS });
     const refreshData = await refreshRes.json();
@@ -1222,14 +1220,18 @@ async function confirmShow() {
   document.getElementById('cmShow' + 'Btn') && (document.querySelector('.cm-show-btn').textContent = 'Claimed!');
   if(typeof umami !== 'undefined') umami.track('secret-promo-claimed', { deal: activeClaim.brand, mall: activeClaim.mall });
   try {
-    const newCount = (activeClaim.claimsCount || 0) + 1;
-    await fetch(`${SB_URL}/rest/v1/deals?id=eq.${activeClaim.id}`, {
-      method: 'PATCH', headers: SB_HEADERS, body: JSON.stringify({ claims_count: newCount })
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/claim_deal`, {
+      method: 'POST', headers: SB_HEADERS, body: JSON.stringify({ p_deal_id: String(activeClaim.id) })
     });
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+    const newCount = rows?.[0]?.new_claims_count ?? ((activeClaim.claimsCount || 0) + 1);
     deals = deals.map(d => d.id === activeClaim.id ? {...d, claimsCount: newCount} : d);
     renderFeed(); renderAllDeals();
-  } catch {}
-  showToast('Claimed! Show this screen to staff 🎉');
+    showToast('Claimed! Show this screen to staff 🎉');
+  } catch {
+    showToast('Could not claim — it may already be fully claimed');
+  }
 }
 function closeClaimModal() {
   document.getElementById('claimModal').classList.remove('show');
@@ -1263,14 +1265,22 @@ function closeCurator() {
   document.getElementById('curatorOverlay').classList.remove('show');
   document.getElementById('curatorPw').value = '';
 }
-function checkCuratorPw() {
+async function checkCuratorPw() {
   const pw = document.getElementById('curatorPw').value;
-  if (pw && pw === (window.ADA_CONFIG && window.ADA_CONFIG.curatorPw)) {
+  if (!pw) return;
+  try {
+    const res = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` },
+      body: JSON.stringify({ password: pw, action: 'login' })
+    });
+    if (!res.ok) throw new Error();
+    curatorPassword = pw;
     curatorUnlocked = true;
     closeCurator();
     showToast('Welcome, curator 👋 — tap logo 5x to manage');
     openManage();
-  } else {
+  } catch {
     document.getElementById('curatorPw').style.borderColor = '#F97316';
     document.getElementById('curatorPw').value = '';
     document.getElementById('curatorPw').placeholder = 'Wrong password';
